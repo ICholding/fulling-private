@@ -99,60 +99,50 @@ cd fulling
 
 2. Install dependencies:
 ```bash
-pnpm install
+npm install
 ```
 
 3. Set up environment variables:
 
-Create `.env.local` file:
+Copy `.env.example` to `.env.local`:
+```bash
+cp .env.example .env.local
+```
+
+Then update `.env.local` with your values:
 ```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/fullstackagent"
+# Required - Database Connection
+DATABASE_URL="postgresql://user:password@localhost:5432/fulling"
 
-# NextAuth
+# Required - NextAuth Configuration
 NEXTAUTH_URL="http://localhost:3000"
-NEXTAUTH_SECRET="your-nextauth-secret"
-AUTH_TRUST_HOST=""
+NEXTAUTH_SECRET="your-nextauth-secret-min-32-chars-required"
+AUTH_TRUST_HOST="true"
 
-# GitHub OAuth (replace with your actual values)
+# Optional - GitHub OAuth (set ENABLE_GITHUB_AUTH=true to use)
 GITHUB_CLIENT_ID=""
 GITHUB_CLIENT_SECRET=""
 
-# Sealos OAuth
+# Optional - Other configurations
 SEALOS_JWT_SECRET=""
-
-# job
-DATABASE_LOCK_DURATION_SECONDS=""
-MAX_DATABASES_PER_RECONCILE=""
-
-SANDBOX_LOCK_DURATION_SECONDS=""
-MAX_SANDBOXES_PER_RECONCILE=""
-
-# k8s resource
 RUNTIME_IMAGE=""
-
-# aiproxy
 AIPROXY_ENDPOINT=""
 ANTHROPIC_BASE_URL=""
-
-# Log
 LOG_LEVEL="info"
-
-# login
-ENABLE_PASSWORD_AUTH=""
-ENABLE_PASSWORD_AUTH=""
-ENABLE_SEALOS_AUTH=""
+ENABLE_PASSWORD_AUTH="true"
+ENABLE_GITHUB_AUTH="false"
+ENABLE_SEALOS_AUTH="false"
 ```
 
-6. Initialize database:
+4. Initialize database:
 ```bash
 npx prisma generate
 npx prisma db push
 ```
 
-7. Run the development server:
+5. Run the development server:
 ```bash
-pnpm run dev
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to access the application.
@@ -161,34 +151,61 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 
 prisma/schema.prisma
 
-## 🚢 Deployment
+## � Automatic Deployment to Vercel
 
-### Kubernetes Resources
+This repository is configured for automated deployment to Vercel using GitHub Actions.
 
-The platform creates the following Kubernetes resources for each project:
+### Setup Required
 
-1. **Database Cluster** (KubeBlocks):
-   - PostgreSQL 14.8.0
-   - 3Gi storage
-   - Auto-generated credentials
+1. **Link Vercel Project:**
+   - Go to [Vercel Dashboard](https://vercel.com/dashboard)
+   - Create a new project or import this GitHub repository
+   - Note your **Project ID** and **Vercel Token**
 
-2. **Sandbox Deployment**:
-   - Custom fullstack-web-runtime image
-   - Claude Code CLI pre-installed
-   - Web terminal (ttyd) on port 7681
-   - Application ports: 3000, 5000, 8080
+2. **Add GitHub Secret:**
+   - Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions**
+   - Click **New repository secret**
+   - Add the secret `VERCEL_TOKEN` with your Vercel API token value
+   - Optional: Add the secret `VERCEL_PROJECT_ID` (if needed by your setup)
 
-3. **Services & Ingress**:
-   - Internal service for pod networking
-   - HTTPS ingress with SSL termination
-   - WebSocket support for terminal
+3. **Set Environment Variables in Vercel:**
+   - In Vercel Dashboard → Project Settings → **Environment Variables**
+   - Add all required variables from `.env.example`:
+     - `DATABASE_URL` (required)
+     - `NEXTAUTH_SECRET` (required)
+     - `NEXTAUTH_URL` (production URL)
+     - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (if using GitHub OAuth)
+     - All other optional variables as needed
 
-### Resource Limits
+### How Auto-Deploy Works
 
-Default resource allocation per sandbox:
-- CPU: 200m limit, 20m request
-- Memory: 256Mi limit, 25Mi request
-- Storage: 3Gi for database
+- **Trigger:** Every push to the `main` branch automatically starts the deployment pipeline
+- **Workflow:** `.github/workflows/vercel-deploy.yml` handles:
+  1. Checkout code
+  2. Setup Node.js 20
+  3. Install dependencies with `npm ci` (or `npm install` if no lock file)
+  4. Run `npm run build` to verify the build works
+  5. Pull environment variables from Vercel
+  6. Build the application with Vercel
+  7. Deploy to production
+
+- **View Deployment:**
+  - Go to **Actions** tab in your GitHub repository
+  - Click the latest workflow run for your push
+  - Scroll to the deployment steps to see the **Vercel deployment URL**
+  - You can also view deployments in [Vercel Dashboard](https://vercel.com/dashboard)
+
+### GitHub Secrets Required
+
+- **`VERCEL_TOKEN`** (required) - Your Vercel API authentication token
+- All environment variables needed by the app should be set in Vercel dashboard, not as GitHub secrets
+
+### Troubleshooting Deployments
+
+- Check **Actions** tab for workflow logs
+- Ensure `VERCEL_TOKEN` is correctly set in GitHub Secrets
+- Verify all required environment variables are set in Vercel Project Settings
+- The workflow uses `SKIP_ENV_VALIDATION=1` during build to allow missing optional vars
 
 ## 🔧 Development
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { Github, User } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn } from 'next-auth/react';
 
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Check for NextAuth errors from redirect
+  useEffect(() => {
+    const errorParam = searchParams?.get('error');
+    if (errorParam) {
+      console.error('[LoginPage] Auth error from NextAuth:', errorParam);
+      setError('Authentication failed. Please try again.');
+    }
+  }, [searchParams]);
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +41,7 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
+        console.error('[LoginPage] Credentials login error:', result.error);
         // Show generic error message for security
         setError('Invalid username or password');
       } else if (result?.ok) {
@@ -50,7 +61,9 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#151515] text-foreground flex items-center justify-center">
       <Card className="w-full max-w-md bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-2xl text-card-foreground mx-auto">Welcome to Fulling</CardTitle>
+          <CardTitle className="text-2xl text-card-foreground mx-auto">
+            Welcome to Fulling
+          </CardTitle>
           <CardDescription className="text-muted-foreground text-center">
             You&apos;re one click away from creating your own full-stack app.
           </CardDescription>
@@ -101,8 +114,8 @@ export default function LoginPage() {
             </Button>
 
             <p className="text-xs text-muted-foreground text-center">
-              Don&apos;t have an account? Just enter your credentials and we&apos;ll create
-              one for you.
+              Don&apos;t have an account? Just enter your credentials and we&apos;ll create one for
+              you.
             </p>
           </form>
 
@@ -127,5 +140,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#151515]" />}>
+      <LoginContent />
+    </Suspense>
   );
 }

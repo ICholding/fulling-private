@@ -11,6 +11,33 @@ import { logger as baseLogger } from '@/lib/logger'
 import { createAiproxyToken } from '@/lib/services/aiproxy'
 
 const logger = baseLogger.child({ module: 'lib/auth' })
+const DEBUG_AUTH = process.env.DEBUG_AUTH === 'true' || process.env.NODE_ENV !== 'production'
+
+// Validate critical auth environment variables
+if (!process.env.NEXTAUTH_SECRET) {
+  const errorMsg = 'CRITICAL: NEXTAUTH_SECRET is not set. Authentication will fail.'
+  logger.error(errorMsg)
+  console.error(errorMsg)
+}
+
+if (!process.env.NEXTAUTH_URL) {
+  const errorMsg = 'CRITICAL: NEXTAUTH_URL is not set. OAuth redirects will fail.'
+  logger.error(errorMsg)
+  console.error(errorMsg)
+}
+
+// Log auth environment status at startup
+if (DEBUG_AUTH) {
+  logger.info('=== AUTH STARTUP DEBUG ===')
+  logger.info(`NEXTAUTH_URL: ${process.env.NEXTAUTH_URL}`)
+  logger.info(`NEXTAUTH_SECRET: ${process.env.NEXTAUTH_SECRET ? '[SET]' : '[MISSING]'}`)
+  logger.info(`ENABLE_PASSWORD_AUTH: ${process.env.ENABLE_PASSWORD_AUTH}`)
+  logger.info(`ENABLE_GITHUB_AUTH: ${process.env.ENABLE_GITHUB_AUTH}`)
+  logger.info(`GITHUB_CLIENT_ID: ${process.env.GITHUB_CLIENT_ID ? '[SET]' : '[MISSING]'}`)
+  logger.info(`GITHUB_CLIENT_SECRET: ${process.env.GITHUB_CLIENT_SECRET ? '[SET]' : '[MISSING]'}`)
+  logger.info(`DATABASE_URL: ${process.env.DATABASE_URL ? '[SET]' : '[MISSING]'}`)
+  logger.info('========================')
+}
 
 // Build providers array dynamically based on feature flags
 const buildProviders = () => {
@@ -28,12 +55,14 @@ const buildProviders = () => {
         },
         async authorize(credentials) {
           if (!credentials?.username || !credentials?.password) {
-            logger.info('Missing username or password')
+            if (DEBUG_AUTH) logger.info('Missing username or password')
             return null
           }
 
           const username = credentials.username as string
           const password = credentials.password as string
+
+          if (DEBUG_AUTH) logger.info(`[Credentials] Attempting login for: ${username}`)
 
           try {
             // Find user by username (providerUserId in PASSWORD identity)
@@ -51,7 +80,7 @@ const buildProviders = () => {
 
             if (!identity) {
               // User doesn't exist - auto-register
-              logger.info(`[Auto-Register] Creating new user: ${username}`)
+              if (DEBUG_AUTH) logger.info(`[Auto-Register] Creating new user: ${username}`)
               const passwordHash = await bcrypt.hash(password, 10)
 
               const newUser = await prisma.user.create({
@@ -68,7 +97,8 @@ const buildProviders = () => {
                 },
               })
 
-              logger.info(`[Auto-Register] User created successfully: ${newUser.id}`)
+              if (DEBUG_AUTH)
+                logger.info(`[Auto-Register] User created successfully: ${newUser.id}`)
 
               return {
                 id: newUser.id,
@@ -81,24 +111,28 @@ const buildProviders = () => {
             const passwordHash = metadata.passwordHash
 
             if (!passwordHash) {
-              logger.warn(`No password hash found for user: ${username}`)
+              if (DEBUG_AUTH) logger.warn(`No password hash found for user: ${username}`)
               return null
             }
 
             const passwordMatch = await bcrypt.compare(password, passwordHash)
             if (!passwordMatch) {
-              logger.warn(`[Auth Failed] Invalid password for user: ${username}`)
+              if (DEBUG_AUTH) logger.warn(`[Auth Failed] Invalid password for user: ${username}`)
               return null
             }
 
             // Authentication successful
-            logger.info(`[Auth Success] User logged in: ${username}`)
+            if (DEBUG_AUTH) logger.info(`[Auth Success] User logged in: ${username}`)
             return {
               id: identity.user.id,
               name: identity.user.name || username,
             }
           } catch (error) {
             logger.error(`[Auth Error] Error in authorize: ${error}`)
+            if (DEBUG_AUTH)
+              logger.error(
+                `[Auth Error] Full stack: ${error instanceof Error ? error.stack : String(error)}`
+              )
             return null
           }
         },
@@ -189,12 +223,17 @@ const buildProviders = () => {
                 where: {
                   userId: existingIdentity.user.id,
                   key: {
-                    in: ['ANTHROPIC_API_KEY', 'ANTHROPIC_API', 'ANTHROPIC_MODEL', 'ANTHROPIC_SMALL_FAST_MODEL'],
+                    in: [
+                      'ANTHROPIC_API_KEY',
+                      'ANTHROPIC_API',
+                      'ANTHROPIC_MODEL',
+                      'ANTHROPIC_SMALL_FAST_MODEL',
+                    ],
                   },
                 },
               })
 
-              const existingKeys = new Set(existingConfigs.map(config => config.key))
+              const existingKeys = new Set(existingConfigs.map((config) => config.key))
 
               // Only create token if at least one config is missing
               if (existingKeys.size < 4) {
@@ -244,7 +283,10 @@ const buildProviders = () => {
                   }
 
                   // Create ANTHROPIC_SMALL_FAST_MODEL only if not exists and value is provided
-                  if (!existingKeys.has('ANTHROPIC_SMALL_FAST_MODEL') && tokenInfo.anthropicSmallFastModel) {
+                  if (
+                    !existingKeys.has('ANTHROPIC_SMALL_FAST_MODEL') &&
+                    tokenInfo.anthropicSmallFastModel
+                  ) {
                     await prisma.userConfig.create({
                       data: {
                         userId: existingIdentity.user.id,
@@ -363,9 +405,13 @@ const buildProviders = () => {
   if (env.ENABLE_GITHUB_AUTH) {
     logger.info('GitHub authentication is ENABLED')
     if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) {
-      logger.warn(
-        'GitHub authentication is enabled but GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET is missing'
-      )
+      const missingVars = []
+      if (!env.GITHUB_CLIENT_ID) missingVars.push('GITHUB_CLIENT_ID')
+      if (!env.GITHUB_CLIENT_SECRET) missingVars.push('GITHUB_CLIENT_SECRET')
+      const errorMsg = `GitHub authentication is enabled but missing required env vars: ${missingVars.join(', ')}`
+      logger.error(errorMsg)
+      console.error(errorMsg)
+      // Don't fail the build - just don't register the provider
     } else {
       providers.push(
         GitHub({
@@ -378,9 +424,10 @@ const buildProviders = () => {
           },
         })
       )
+      logger.info('GitHub OAuth provider registered successfully')
     }
   } else {
-    logger.info('GitHub authentication is DISABLED')
+    logger.info('GitHub authentication is DISABLED. Set ENABLE_GITHUB_AUTH=true to enable.')
   }
 
   if (providers.length === 0) {
@@ -395,10 +442,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account, profile }) {
       if (account?.provider === 'github') {
+        if (DEBUG_AUTH)
+          logger.info(`[GitHub] signIn callback triggered for user: ${user?.name || user?.email}`)
         try {
           const githubId = account.providerAccountId
           const githubToken = account.access_token
           const scope = account.scope || 'repo read:user'
+
+          if (DEBUG_AUTH)
+            logger.info(
+              `[GitHub] GitHub ID: ${githubId}, Token: ${githubToken ? '[SET]' : '[MISSING]'}`
+            )
 
           // Check if identity exists
           const existingIdentity = await prisma.userIdentity.findUnique({
@@ -414,6 +468,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           })
 
           if (existingIdentity) {
+            if (DEBUG_AUTH) logger.info(`[GitHub] Existing user found: ${existingIdentity.user.id}`)
             // Update GitHub token in metadata
             await prisma.userIdentity.update({
               where: { id: existingIdentity.id },
@@ -429,6 +484,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             user.id = existingIdentity.user.id
             user.name = existingIdentity.user.name
           } else {
+            if (DEBUG_AUTH)
+              logger.info(
+                `[GitHub] Creating new user from GitHub profile: ${profile?.login || profile?.name}`
+              )
             // Create new user with GitHub identity
             const newUser = await prisma.user.create({
               data: {
@@ -451,11 +510,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               },
             })
 
+            if (DEBUG_AUTH) logger.info(`[GitHub] New user created: ${newUser.id}`)
             user.id = newUser.id
             user.name = newUser.name
           }
         } catch (error) {
           logger.error(`Error in GitHub signIn callback: ${error}`)
+          if (DEBUG_AUTH)
+            logger.error(
+              `[GitHub] Full stack: ${error instanceof Error ? error.stack : String(error)}`
+            )
           return false
         }
       }
@@ -464,6 +528,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       // On initial sign in, store minimal user data in JWT
       if (user) {
+        if (DEBUG_AUTH) logger.info(`[JWT] Creating JWT token for user: ${user.id}`)
         token.id = user.id
         token.name = user.name
       }
@@ -472,6 +537,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       // Pass user data from JWT to session
       if (token && session.user) {
+        if (DEBUG_AUTH) logger.info(`[Session] Creating session for user: ${token.id}`)
         session.user.id = token.id as string
         session.user.name = token.name as string | null | undefined
       }

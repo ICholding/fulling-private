@@ -46,5 +46,6 @@
         "sealos",
         "ttyd",
         "whatwg"
-    ]
+    ],
+    "prisma.pinToPrisma6": true
 }

@@ -150,7 +150,30 @@ Open [http://localhost:3000](http://localhost:3000) to access the application.
 ### Database Schema
 
 prisma/schema.prisma
+## ⚡ Terminal Recovery & Terminalless Workflow
 
+**Terminal unavailable?** See [docs/TERMINAL_RECOVERY.md](docs/TERMINAL_RECOVERY.md) for:
+- Quick fixes (reload, network, Codespace restart)
+- Decision tree to diagnose the issue
+- Terminalless development workflow
+
+### Verify CI/Build Without Terminal
+
+1. **Push to main** → Watch GitHub Actions:
+   - Go to **Actions** tab
+   - Watch the **CI** workflow run lint/build/typecheck
+   - Passes = ✅ Build is valid
+
+2. **Verify diagnostics** (no terminal needed):
+   ```
+   https://fulling-git-main-leadteamllcs-projects.vercel.app/api/health  
+   https://fulling-git-main-leadteamllcs-projects.vercel.app/api/diag
+   ```
+
+3. **Check Vercel deploy**:
+   - Go to https://vercel.com/fulling/deployments
+   - Watch latest deployment logs
+   - When done: Click "Visit" to test live app
 ## � Automatic Deployment to Vercel
 
 This repository is configured for automated deployment to Vercel using GitHub Actions.

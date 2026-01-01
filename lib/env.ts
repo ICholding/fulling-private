@@ -26,6 +26,10 @@ export const env = createEnv({
       .optional()
       .default('false')
       .transform((val) => val !== 'false'),
+    // Single-user auth mode
+    AUTH_MODE: z.enum(['single_user', 'multi_user']).optional().default('single_user'),
+    ADMIN_USERNAME: z.string().optional(),
+    ADMIN_PASSWORD_HASH: z.string().optional(),
     // GitHub OAuth credentials
     GITHUB_CLIENT_ID: z.string().optional(),
     GITHUB_CLIENT_SECRET: z.string().optional(),

@@ -5,6 +5,7 @@ import GitHub from 'next-auth/providers/github'
 
 import { prisma } from '@/lib/db'
 import { env } from '@/lib/env'
+import { formatAuthValidationError, validateAuthEnv } from '@/lib/env-auth'
 import { isJWTExpired, parseSealosJWT } from '@/lib/jwt'
 import { updateUserKubeconfig } from '@/lib/k8s/k8s-service-helper'
 import { logger as baseLogger } from '@/lib/logger'
@@ -13,29 +14,34 @@ import { createAiproxyToken } from '@/lib/services/aiproxy'
 const logger = baseLogger.child({ module: 'lib/auth' })
 const DEBUG_AUTH = process.env.DEBUG_AUTH === 'true' || process.env.NODE_ENV !== 'production'
 
-// Validate critical auth environment variables
-if (!process.env.NEXTAUTH_SECRET) {
-  const errorMsg = 'CRITICAL: NEXTAUTH_SECRET is not set. Authentication will fail.'
+// CRITICAL: Validate auth environment before NextAuth initialization
+const authValidation = validateAuthEnv()
+if (!authValidation.isValid) {
+  const errorMsg = formatAuthValidationError(authValidation)
   logger.error(errorMsg)
   console.error(errorMsg)
-}
-
-if (!process.env.NEXTAUTH_URL) {
-  const errorMsg = 'CRITICAL: NEXTAUTH_URL is not set. OAuth redirects will fail.'
-  logger.error(errorMsg)
-  console.error(errorMsg)
+  throw new Error(
+    `AUTH_CONFIGURATION_ERROR: Missing required environment variables. ` +
+      `Missing: ${[...authValidation.missing.auth, ...authValidation.missing.github, ...authValidation.missing.database].join(', ')}. ` +
+      `See logs for details.`
+  )
 }
 
 // Log auth environment status at startup
 if (DEBUG_AUTH) {
   logger.info('=== AUTH STARTUP DEBUG ===')
   logger.info(`NEXTAUTH_URL: ${process.env.NEXTAUTH_URL}`)
-  logger.info(`NEXTAUTH_SECRET: ${process.env.NEXTAUTH_SECRET ? '[SET]' : '[MISSING]'}`)
+  logger.info(
+    `NEXTAUTH_SECRET: ${process.env.NEXTAUTH_SECRET ? '[SET - ' + process.env.NEXTAUTH_SECRET.length + ' chars]' : '[MISSING]'}`
+  )
   logger.info(`ENABLE_PASSWORD_AUTH: ${process.env.ENABLE_PASSWORD_AUTH}`)
   logger.info(`ENABLE_GITHUB_AUTH: ${process.env.ENABLE_GITHUB_AUTH}`)
   logger.info(`GITHUB_CLIENT_ID: ${process.env.GITHUB_CLIENT_ID ? '[SET]' : '[MISSING]'}`)
   logger.info(`GITHUB_CLIENT_SECRET: ${process.env.GITHUB_CLIENT_SECRET ? '[SET]' : '[MISSING]'}`)
   logger.info(`DATABASE_URL: ${process.env.DATABASE_URL ? '[SET]' : '[MISSING]'}`)
+  logger.info(`NODE_ENV: ${process.env.NODE_ENV}`)
+  logger.info(`Production domain: ${authValidation.productionUrl}`)
+  logger.info(`Runtime URL: ${authValidation.runtimeUrl}`)
   logger.info('========================')
 }
 
@@ -579,6 +585,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   // Use secure cookies in production
   useSecureCookies: process.env.NODE_ENV === 'production',
+  // Trust host is critical for OAuth on non-localhost domains
+  // This allows NextAuth to accept callbacks from NEXTAUTH_URL domain
+  trustHost: true,
   pages: {
     signIn: '/login',
     error: '/error',

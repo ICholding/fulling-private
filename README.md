@@ -193,12 +193,107 @@ This repository is configured for automated deployment to Vercel using GitHub Ac
 
 3. **Set Environment Variables in Vercel:**
    - In Vercel Dashboard → Project Settings → **Environment Variables**
-   - Add all required variables from `.env.example`:
-     - `DATABASE_URL` (required)
-     - `NEXTAUTH_SECRET` (required)
-     - `NEXTAUTH_URL` (production URL)
-     - `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET` (if using GitHub OAuth)
-     - All other optional variables as needed
+   - **For Production** environment, add EXACTLY these variables:
+
+```
+NEXTAUTH_URL=https://fulling.vercel.app
+NEXTAUTH_SECRET=<generate with: openssl rand -base64 32>
+DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>
+GITHUB_CLIENT_ID=<from GitHub OAuth app>
+GITHUB_CLIENT_SECRET=<from GitHub OAuth app>
+ENABLE_PASSWORD_AUTH=true
+ENABLE_GITHUB_AUTH=true
+NODE_ENV=production
+```
+
+### Production Authentication Setup
+
+**⚠️ CRITICAL: Auth will fail without these exact values**
+
+#### Step 1: Create GitHub OAuth Application
+1. Go to https://github.com/settings/developers
+2. Click **OAuth Apps** → **New OAuth App**
+3. Fill in:
+   - **Application name**: `Fulling`
+   - **Homepage URL**: `https://fulling.vercel.app` (EXACT match required)
+   - **Authorization callback URL**: `https://fulling.vercel.app/api/auth/callback/github`
+4. Copy **Client ID** and create **Client Secret**
+5. Add both to Vercel as `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`
+
+#### Step 2: Set Up PostgreSQL Database
+Use one of:
+- **Neon** (recommended): https://neon.tech
+- **Railway**: https://railway.app
+- **Supabase**: https://supabase.com
+- **Any managed PostgreSQL**
+
+Get a connection string like: `postgresql://user:password@host:port/database`
+
+⚠️ **SQLite WILL NOT WORK** on Vercel (no persistent filesystem)
+
+#### Step 3: Generate NEXTAUTH_SECRET
+```bash
+openssl rand -base64 32
+```
+Copy output (e.g., `ZXjK9+qW8vL2mNxP4hRqA1bC3dEfGhIjKlMnOpQrStU=`) to Vercel
+
+#### Step 4: Verify Configuration
+After setting all env vars and redeploying, check:
+```
+https://fulling.vercel.app/api/health-auth
+```
+
+Should return:
+```json
+{
+  "status": "healthy",
+  "ok": true,
+  "hasDatabase": true,
+  "hasGitHub": true,
+  "hasSecret": true,
+  "issues": []
+}
+```
+
+If not healthy, fix issues and redeploy.
+
+#### Troubleshooting AUTH_CONFIG_ERROR
+
+If you see "AUTH_CONFIG_ERROR" at login:
+
+1. **Check /api/health-auth** for missing variables
+2. **Verify env vars are set in Vercel** (not in `.env.local`)
+3. **Redeploy after adding vars** (GitHub Actions → Vercel)
+4. **Check Vercel logs**:
+   - Vercel Dashboard → Project → Logs → Function Logs
+   - Look for `AUTH_CONFIG` errors
+5. **Ensure DATABASE_URL is PostgreSQL** (starts with `postgresql://`)
+6. **Verify NEXTAUTH_URL is exactly** `https://fulling.vercel.app` (no trailing slash, no http)
+
+### Environment Variables Reference
+
+| Variable | Required | Type | Example / Notes |
+|----------|----------|------|-----------------|
+| `NEXTAUTH_URL` | ✅ | String | `https://fulling.vercel.app` (production) |
+| `NEXTAUTH_SECRET` | ✅ | String | Generate: `openssl rand -base64 32` (min 32 chars) |
+| `DATABASE_URL` | ✅ | PostgreSQL URL | `postgresql://user:pass@neon.tech:5432/fulling` |
+| `GITHUB_CLIENT_ID` | ✅ | String | From GitHub OAuth app settings |
+| `GITHUB_CLIENT_SECRET` | ✅ | String | From GitHub OAuth app settings (keep secret!) |
+| `ENABLE_PASSWORD_AUTH` | Optional | Boolean | `true` or `false` (default: `true`) |
+| `ENABLE_GITHUB_AUTH` | Optional | Boolean | `true` or `false` (default: `false` - set to `true` in Vercel) |
+| `NODE_ENV` | Optional | String | `production` (Vercel) or `development` (local) |
+| `DEBUG_AUTH` | Optional | Boolean | `true` to enable auth debug logs in production |
+| `SEALOS_JWT_SECRET` | Optional | String | Only if using Sealos authentication |
+| `ANTHROPIC_API_KEY` | Optional | String | For Claude API integration |
+| `AIPROXY_ENDPOINT` | Optional | URL | For Aiproxy service integration |
+
+**⚠️ PRODUCTION CHECKLIST:**
+- [ ] All 5 "Required" variables above are set in Vercel
+- [ ] `NEXTAUTH_URL` is exactly `https://fulling.vercel.app` (no http://, no trailing /)
+- [ ] `DATABASE_URL` starts with `postgresql://` (not SQLite)
+- [ ] GitHub OAuth app callback URL matches `NEXTAUTH_URL/api/auth/callback/github` exactly
+- [ ] `/api/health-auth` returns `"ok": true`
+- [ ] Login page works and GitHub button initiates OAuth
 
 ### How Auto-Deploy Works
 

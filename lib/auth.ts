@@ -19,10 +19,30 @@ const authValidation = validateAuthEnv()
 if (!authValidation.isValid) {
   const errorMsg = formatAuthValidationError(authValidation)
   logger.error(errorMsg)
+
+  // Log structured error for monitoring/debugging
+  const missingAll = [
+    ...authValidation.missing.auth,
+    ...authValidation.missing.github,
+    ...authValidation.missing.database,
+  ]
+  console.error(
+    JSON.stringify({
+      level: 'FATAL',
+      module: 'auth',
+      code: 'AUTH_ENV_MISSING',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV,
+      missing: missingAll,
+      issues: authValidation.issues,
+      hint: 'Set missing env vars in Vercel Dashboard → Project Settings → Environment Variables (Production) and redeploy',
+      docs: 'https://github.com/FullAgent/fulling#production-authentication-setup',
+    })
+  )
   console.error(errorMsg)
   throw new Error(
     `AUTH_CONFIGURATION_ERROR: Missing required environment variables. ` +
-      `Missing: ${[...authValidation.missing.auth, ...authValidation.missing.github, ...authValidation.missing.database].join(', ')}. ` +
+      `Missing: ${missingAll.join(', ')}. ` +
       `See logs for details.`
   )
 }

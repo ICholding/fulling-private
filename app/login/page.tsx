@@ -17,6 +17,7 @@ function LoginContent() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [enableGithub, setEnableGithub] = useState(false);
 
   // Check for NextAuth errors from redirect
   useEffect(() => {
@@ -26,6 +27,22 @@ function LoginContent() {
       setError('Authentication failed. Please try again.');
     }
   }, [searchParams]);
+
+  // Load GitHub auth enabled status from /api/health-auth
+  useEffect(() => {
+    const checkGithubAuth = async () => {
+      try {
+        const response = await fetch('/api/health-auth');
+        if (response.ok) {
+          const data = await response.json();
+          setEnableGithub(data.hasGitHub === true);
+        }
+      } catch (err) {
+        console.error('[LoginPage] Failed to check GitHub auth status:', err);
+      }
+    };
+    checkGithubAuth();
+  }, []);
 
   const handleCredentialsLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,15 +145,22 @@ function LoginContent() {
             </div>
           </div>
 
-          <Button
-            onClick={() => signIn('github', { callbackUrl: '/projects' })}
-            className="w-full bg-secondary text-secondary-foreground hover:bg-muted rounded-md"
-            size="lg"
-            variant="outline"
-          >
-            <Github className="mr-2 h-5 w-5" />
-            Continue with GitHub
-          </Button>
+          {enableGithub ? (
+            <Button
+              onClick={() => signIn('github', { callbackUrl: '/projects' })}
+              className="w-full bg-secondary text-secondary-foreground hover:bg-muted rounded-md"
+              size="lg"
+              variant="outline"
+            >
+              <Github className="mr-2 h-5 w-5" />
+              Continue with GitHub
+            </Button>
+          ) : (
+            <div className="text-xs text-muted-foreground text-center p-3 bg-secondary/50 rounded-md border border-border">
+              GitHub login is not configured. Contact your administrator or set
+              ENABLE_GITHUB_AUTH=true.
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

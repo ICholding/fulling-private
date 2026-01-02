@@ -134,7 +134,7 @@ The `fixes/` directory serves as the **bug fix knowledge base** for FullstackAge
 - [`../technical-notes/TECHNICAL_DOCUMENTATION.md`](../technical-notes/TECHNICAL_DOCUMENTATION.md) - System architecture context
 - [`../troubleshooting/`](../troubleshooting/) - User-facing issue guides
 - `/lib/kubernetes.ts` - Core implementation that often requires fixes
-- Root `/CLAUDE.md` - Current implementation state
+- `/.github/CLAUDE.md` - Current implementation state
 
 ## 📊 Fix Categories
 

@@ -58,4 +58,4 @@ The `prompt/` directory serves as the **product specification source** for Fulls
 
 - [`../technical-notes/`](../technical-notes/) - Technical implementation details
 - [`../iteration/`](../iteration/) - Version-specific feature planning
-- `/CLAUDE.md` - Code-level implementation guide
+- `/.github/CLAUDE.md` - Code-level implementation guide

@@ -111,4 +111,4 @@ The `iteration/` directory serves as the **version planning and tracking hub** f
 - [`../prompt/PRD.md`](../prompt/PRD.md) - Original product vision
 - [`../technical-notes/`](../technical-notes/) - Implementation details
 - [`../fixes/`](../fixes/) - Bug fix documentation
-- Root `/CLAUDE.md` - Current implementation state
+- `/.github/CLAUDE.md` - Current implementation state

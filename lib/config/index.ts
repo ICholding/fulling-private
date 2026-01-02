@@ -11,6 +11,7 @@ export interface ValidationResult {
   missing: string[]
   warnings: string[]
   featureFlags: {
+    authDisabled: boolean
     passwordAuthEnabled: boolean
     githubAuthEnabled: boolean
     singleUserMode: boolean
@@ -34,6 +35,33 @@ function validateEnv(): ValidationResult {
   const warnings: string[] = []
   const featureFlags: any = {}
   const masked: any = {}
+
+  // Check auth mode first
+  const authMode = process.env.AUTH_MODE || 'single_user'
+  const isAuthDisabled = authMode === 'disabled'
+  featureFlags.authDisabled = isAuthDisabled
+
+  // If auth is disabled, skip most validation
+  if (isAuthDisabled) {
+    featureFlags.passwordAuthEnabled = false
+    featureFlags.githubAuthEnabled = false
+    featureFlags.singleUserMode = false
+    masked.hasNextauthSecret = false
+    masked.hasGithubClientId = false
+    masked.hasGithubClientSecret = false
+    
+    warnings.push('AUTH_MODE=disabled: Authentication completely bypassed')
+    
+    return {
+      ok: true,
+      missing,
+      warnings,
+      featureFlags,
+      masked,
+      runtime: process.env.NODE_ENV || 'unknown',
+      commit: process.env.VERCEL_GIT_COMMIT_SHA || 'dev',
+    }
+  }
 
   // === NEXTAUTH CORE (required for all modes) ===
   if (!process.env.NEXTAUTH_URL) {

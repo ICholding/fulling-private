@@ -8,7 +8,7 @@ export const env = createEnv({
    * Will throw if you access these variables on the client.
    */
   server: {
-    DATABASE_URL: z.url(),
+    DATABASE_URL: z.string().optional().default('postgresql://user:pass@localhost:5432/fulling'),
     RUNTIME_IMAGE: z.string().optional(),
     // Authentication provider feature flags
     ENABLE_PASSWORD_AUTH: z
@@ -27,9 +27,11 @@ export const env = createEnv({
       .default('false')
       .transform((val) => val !== 'false'),
     // Single-user auth mode
-    AUTH_MODE: z.enum(['single_user', 'multi_user']).optional().default('single_user'),
+    AUTH_MODE: z.enum(['disabled', 'single_user', 'multi_user']).optional().default('single_user'),
     ADMIN_USERNAME: z.string().optional(),
     ADMIN_PASSWORD_HASH: z.string().optional(),
+    // For disabled mode
+    SINGLE_USER_EMAIL: z.string().email().optional(),
     // GitHub OAuth credentials
     GITHUB_CLIENT_ID: z.string().optional(),
     GITHUB_CLIENT_SECRET: z.string().optional(),

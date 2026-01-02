@@ -8,6 +8,25 @@
   <img src="https://img.shields.io/badge/Claude_Code-AI-purple?style=for-the-badge" alt="Claude Code"/>
 </div>
 
+## ⚡ Quick Start
+
+### Deploy to Vercel (Fastest)
+
+```bash
+# 1. Deploy to Vercel
+vercel deploy --prod
+
+# 2. Set environment variables in Vercel Dashboard:
+AUTH_MODE=disabled  # No login required (fastest)
+DATABASE_URL=postgresql://user:pass@host:5432/fulling
+```
+
+**That's it!** Your app is live and accessible without authentication.
+
+For production deployments with authentication, see [VERCEL_DEPLOYMENT_GUIDE.md](VERCEL_DEPLOYMENT_GUIDE.md).
+
+---
+
 ## 🚀 Overview
 
 Fulling provides a sandboxed environment with Claude Code and PostgreSQL — everything you need to vibe code full-stack apps.

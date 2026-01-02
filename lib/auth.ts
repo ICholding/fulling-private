@@ -18,17 +18,24 @@ const DEBUG_AUTH = process.env.DEBUG_AUTH === 'true' || process.env.NODE_ENV !==
 
 // Determine auth mode
 const AUTH_MODE = env.AUTH_MODE || 'single_user'
+const IS_AUTH_DISABLED = AUTH_MODE === 'disabled'
 const IS_SINGLE_USER_MODE = AUTH_MODE === 'single_user' || !!env.ADMIN_USERNAME
 
 // CRITICAL: Validate auth environment before NextAuth initialization
+// Skip validation if auth is disabled
 const authValidation = validateAuthEnv()
 
+// Skip all auth validation if disabled
+if (IS_AUTH_DISABLED) {
+  logger.info('AUTH_MODE=disabled: Skipping all auth validation')
+}
+
 // Log structured config validation (always, for monitoring)
-if (!isConfigValid()) {
+if (!IS_AUTH_DISABLED && !isConfigValid()) {
   console.error(getConfigLog())
 }
 
-if (!authValidation.isValid) {
+if (!authValidation.isValid && !IS_AUTH_DISABLED) {
   const errorMsg = formatAuthValidationError(authValidation)
   logger.error(errorMsg)
 
@@ -63,23 +70,29 @@ if (!authValidation.isValid) {
 if (DEBUG_AUTH) {
   logger.info('=== AUTH STARTUP DEBUG ===')
   logger.info(`AUTH_MODE: ${AUTH_MODE}`)
+  logger.info(`IS_AUTH_DISABLED: ${IS_AUTH_DISABLED}`)
   logger.info(`IS_SINGLE_USER_MODE: ${IS_SINGLE_USER_MODE}`)
-  logger.info(`NEXTAUTH_URL: ${process.env.NEXTAUTH_URL}`)
-  logger.info(
-    `NEXTAUTH_SECRET: ${process.env.NEXTAUTH_SECRET ? '[SET - ' + process.env.NEXTAUTH_SECRET.length + ' chars]' : '[MISSING]'}`
-  )
-  logger.info(`ENABLE_PASSWORD_AUTH: ${process.env.ENABLE_PASSWORD_AUTH}`)
-  logger.info(`ENABLE_GITHUB_AUTH: ${process.env.ENABLE_GITHUB_AUTH}`)
-  if (IS_SINGLE_USER_MODE) {
-    logger.info(`ADMIN_USERNAME: ${process.env.ADMIN_USERNAME ? '[SET]' : '[MISSING]'}`)
-    logger.info(`ADMIN_PASSWORD_HASH: ${process.env.ADMIN_PASSWORD_HASH ? '[SET]' : '[MISSING]'}`)
+  if (!IS_AUTH_DISABLED) {
+    logger.info(`NEXTAUTH_URL: ${process.env.NEXTAUTH_URL}`)
+    logger.info(
+      `NEXTAUTH_SECRET: ${process.env.NEXTAUTH_SECRET ? '[SET - ' + process.env.NEXTAUTH_SECRET.length + ' chars]' : '[MISSING]'}`
+    )
+    logger.info(`ENABLE_PASSWORD_AUTH: ${process.env.ENABLE_PASSWORD_AUTH}`)
+    logger.info(`ENABLE_GITHUB_AUTH: ${process.env.ENABLE_GITHUB_AUTH}`)
+    if (IS_SINGLE_USER_MODE) {
+      logger.info(`ADMIN_USERNAME: ${process.env.ADMIN_USERNAME ? '[SET]' : '[MISSING]'}`)
+      logger.info(`ADMIN_PASSWORD_HASH: ${process.env.ADMIN_PASSWORD_HASH ? '[SET]' : '[MISSING]'}`)
+    }
+    logger.info(`GITHUB_CLIENT_ID: ${process.env.GITHUB_CLIENT_ID ? '[SET]' : '[MISSING]'}`)
+    logger.info(`GITHUB_CLIENT_SECRET: ${process.env.GITHUB_CLIENT_SECRET ? '[SET]' : '[MISSING]'}`)
+    logger.info(`DATABASE_URL: ${process.env.DATABASE_URL ? '[SET]' : '[MISSING]'}`)
+    logger.info(`NODE_ENV: ${process.env.NODE_ENV}`)
+    logger.info(`Production domain: ${authValidation.productionUrl}`)
+    logger.info(`Runtime URL: ${authValidation.runtimeUrl}`)
+  } else {
+    logger.info('AUTH COMPLETELY DISABLED - No login required')
+    logger.info(`SINGLE_USER_EMAIL: ${env.SINGLE_USER_EMAIL || 'owner@local.dev'}`)
   }
-  logger.info(`GITHUB_CLIENT_ID: ${process.env.GITHUB_CLIENT_ID ? '[SET]' : '[MISSING]'}`)
-  logger.info(`GITHUB_CLIENT_SECRET: ${process.env.GITHUB_CLIENT_SECRET ? '[SET]' : '[MISSING]'}`)
-  logger.info(`DATABASE_URL: ${process.env.DATABASE_URL ? '[SET]' : '[MISSING]'}`)
-  logger.info(`NODE_ENV: ${process.env.NODE_ENV}`)
-  logger.info(`Production domain: ${authValidation.productionUrl}`)
-  logger.info(`Runtime URL: ${authValidation.runtimeUrl}`)
   logger.info('========================')
 }
 

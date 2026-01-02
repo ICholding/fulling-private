@@ -26,7 +26,7 @@
 
 interface AuthEnvValidationResult {
   isValid: boolean
-  mode: 'single_user' | 'multi_user'
+  mode: 'disabled' | 'single_user' | 'multi_user'
   productionUrl: string
   runtimeUrl: string
   missing: {
@@ -46,11 +46,12 @@ interface AuthEnvValidationResult {
 export function validateAuthEnv(): AuthEnvValidationResult {
   // Determine auth mode
   const authMode = process.env.AUTH_MODE || 'single_user'
+  const isDisabledMode = authMode === 'disabled'
   const isSingleUserMode = authMode === 'single_user' || !!process.env.ADMIN_USERNAME
 
   const result: AuthEnvValidationResult = {
     isValid: true,
-    mode: isSingleUserMode ? 'single_user' : 'multi_user',
+    mode: isDisabledMode ? 'disabled' : (isSingleUserMode ? 'single_user' : 'multi_user'),
     productionUrl: 'https://fulling.vercel.app',
     runtimeUrl: process.env.NEXTAUTH_URL || '[NOT SET]',
     missing: {
@@ -61,6 +62,12 @@ export function validateAuthEnv(): AuthEnvValidationResult {
     },
     issues: [],
     warnings: [],
+  }
+
+  // If auth is disabled, skip all validation
+  if (isDisabledMode) {
+    result.warnings.push('AUTH_MODE=disabled: Authentication is completely bypassed. Do not use in production with sensitive data.')
+    return result
   }
 
   // === CRITICAL: NextAuth Core (Required for all modes) ===

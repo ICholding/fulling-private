@@ -531,6 +531,15 @@ Content-Type: application/json
 
 We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
 
+### For AI Coding Assistants
+
+This repository includes comprehensive instructions for GitHub Copilot and Claude Code in [`.github/CLAUDE.md`](.github/CLAUDE.md). This file contains:
+- Architecture overview and design patterns
+- Development commands and workflows
+- Critical implementation details
+- Common issues and solutions
+- Best practices for working with this codebase
+
 ### Development Setup
 
 1. Fork the repository

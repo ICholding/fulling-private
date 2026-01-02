@@ -105,5 +105,5 @@ The `technical-notes/` directory serves as the **technical knowledge base** for 
 - [`../prompt/`](../prompt/) - Product requirements and specifications
 - [`../fixes/`](../fixes/) - Detailed bug fix documentation
 - [`../troubleshooting/`](../troubleshooting/) - User-facing issue guides
-- `/CLAUDE.md` - Quick reference for Claude Code
+- `/.github/CLAUDE.md` - Quick reference for Claude Code
 - `/lib/kubernetes.ts` - Actual implementation code

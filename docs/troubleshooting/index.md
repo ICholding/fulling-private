@@ -127,7 +127,7 @@ What information to provide:
 
 - [`../fixes/`](../fixes/) - Technical fix documentation for resolved issues
 - [`../technical-notes/TECHNICAL_DOCUMENTATION.md`](../technical-notes/TECHNICAL_DOCUMENTATION.md) - Troubleshooting section for developers
-- Root `/CLAUDE.md` - Quick reference for common commands
+- `/.github/CLAUDE.md` - Quick reference for common commands
 - Root `/README.md` - Getting started guide
 
 ## 📊 Issue Priority

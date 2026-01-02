@@ -60,4 +60,4 @@ Documentation is continuously updated as the platform evolves. Each directory co
 
 ---
 
-*For the latest code-level documentation, see `/CLAUDE.md` in the root directory.*
+*For the latest code-level documentation, see `/.github/CLAUDE.md`.*
